@@ -1,3 +1,7 @@
+import sys
+import subprocess
+import os
+
 import Bio
 from Bio.Alphabet import generic_dna
 from Bio import motifs
@@ -7,63 +11,68 @@ from Bio.Align import MultipleSeqAlignment
 from Bio import AlignIO
 from Bio.Align import AlignInfo
 from Bio.Alphabet import IUPAC, Gapped
+from Bio.Align.Applications import ClustalwCommandline
+from Bio.Align.Applications import ClustalwCommandline
+from Bio.SubsMat import FreqTable
 
-#instances = [Seq("GGCGTTCAGGCA"),
-#             Seq("AAGAATCAGTCA"),
-#             Seq("CAAGGAGTTCGC"),
-#             Seq("CACGTCAATCAC"),
-#             Seq("CAATAATATTCG"),
-#            ]
+alph=Gapped(IUPAC.ambiguous_dna)
 
-#m = motifs.create(instances)
-#pwm = m.counts.normalize()
+def printAlignmentInfo(alignment, alphabet):
+    seqlist = []
+    for record in alignment:
+        seqlist.append(record.seq)               
 
-#print(pwm)
-alph=Gapped(IUPAC.unambiguous_dna)
-align1 = MultipleSeqAlignment([
-             SeqRecord(Seq("ACTGCTAGCTAG", alph), id="Alpha"),
-             SeqRecord(Seq("ACT-CTAGCTAG", alph), id="Beta"),
-             SeqRecord(Seq("ACTGCTAGCTAG", alph), id="Gamma"),
-         ], alph)
+    m = motifs.create(seqlist, alphabet)
+    pwm = m.counts.normalize()
+    consensus = pwm.consensus
 
-align2 = MultipleSeqAlignment([
-             SeqRecord(Seq("GTCAGC-AG", Gapped(generic_dna)), id="Delta"),
-             SeqRecord(Seq("GACAGCTAG", Gapped(generic_dna)), id="Epsilon"),
-             SeqRecord(Seq("GTCAGCTAG", Gapped(generic_dna)), id="Zeta"),
-         ], Gapped(generic_dna))
+    print(alignment)
 
-align3 = MultipleSeqAlignment([
-             SeqRecord(Seq("ACTAGTACAGCTG", Gapped(generic_dna)), id="Eta"),
-             SeqRecord(Seq("ACTAGTACAGCT-", Gapped(generic_dna)), id="Theta"),
-             SeqRecord(Seq("-CTACTACAGGTG", Gapped(generic_dna)), id="Iota"),
-         ], Gapped(generic_dna))
+    print('first description: %s' % alignment[0].description)
+    print('first sequence: %s' % alignment[0].seq)
+    print('matrix %s' % pwm)
+    print('consensus %s' % consensus)    
+    return
 
-#align4 = MultipleSeqAlignment([
-#             SeqRecord(Seq("ABC-A", generic_dna), id="Eta"),
-#             SeqRecord(Seq("ABABA", generic_dna), id="Theta"),
-#             SeqRecord(Seq("ACCB-", generic_dna), id="Iota"),
-#             SeqRecord(Seq("CB_BC", generic_dna), id="Zeta"),
-#         ])
+def loadAlignmentFromFile( fileName, format ):
+    alignment = AlignIO.read(fileName, format, alphabet = alph)    
+    return alignment
 
-my_alignments = [align1, align2, align3]
+def loadAlignmentsListFromFile(fileName, format):
+    alignments = list(AlignIO.parse(fileName, format))
+    return alignments
 
-seqlist = []
-for record in align1:
-    seqlist.append(record.seq)
+def alignSequences(filename):
+    clustalw_exe = r"clustalw2.exe"
+    cline = ClustalwCommandline(clustalw_exe, infile=filename, outfile='test.aln', gapopen = 0, gapext = 0)
 
-m = motifs.create(seqlist, alph)
-pwm = m.counts.normalize()
-print(pwm)
-consensus = pwm.consensus
-print(consensus)
+    return_code = subprocess.call(str(cline), shell=(sys.platform != "win32"))
+    assert return_code == 0, "Calling ClustalW failed"
 
-#summary_align = AlignInfo.SummaryInfo(align4)
-#consensus = summary_align.dumb_consensus()
+    resultAlignment = loadAlignmentFromFile('test.aln', 'clustal')
+    return resultAlignment
 
-#my_pssm = summary_align.pos_specific_score_matrix(consensus, chars_to_ignore = ['X'])
+def combineAlignments(alignments):
+    AlignIO.write(alignments, "temp.fasta", "fasta")
 
-#print(consensus)
-#print(my_pssm)
+    result = alignSequences("temp.fasta")    
+    return result
 
-
-AlignIO.write(my_alignments, "my_example.fasta", "fasta")
+option = input("Single alignment (s) or multiple (m)? ")
+if(option == "s" or option == "S"):
+    fileName = input("Enter filename ")
+    format = input("Enter format ")
+    alignment = loadAlignmentFromFile(fileName, format)
+    printAlignmentInfo(alignment, alph)
+elif(option == "m" or option == "M"):
+    fileName = input("Enter filename ")
+    format = input("Enter format ")
+    alignments = loadAlignmentsListFromFile(fileName, format)
+    result = combineAlignments(alignments)
+    printAlignmentInfo(result, alph)
+elif(option == "d" or option == "D"):
+    alignments = loadAlignmentsListFromFile("my_example.phy", "phylip")
+    result = combineAlignments(alignments)
+    printAlignmentInfo(result, alph)
+else:
+    print("Unrecognized option")
