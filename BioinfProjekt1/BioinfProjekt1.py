@@ -26,12 +26,25 @@ def printAlignmentInfo(alignment, alphabet):
     pwm = m.counts.normalize()
     consensus = pwm.consensus
 
+    summary_align = AlignInfo.SummaryInfo(alignment)
+
+    consensus2 = summary_align.dumb_consensus()
+    my_pssm = summary_align.pos_specific_score_matrix(consensus,
+                                                  chars_to_ignore=['N'])
+
     print(alignment)
 
     print('first description: %s' % alignment[0].description)
     print('first sequence: %s' % alignment[0].seq)
-    print('matrix %s' % pwm)
-    print('consensus %s' % consensus)    
+    print('length %i' % alignment.get_alignment_length())
+
+
+    print('matrix pwm %s' % pwm)
+    print('consensus (motifs) %s' % consensus)
+    
+    print('matrix pssm %s' % my_pssm)
+    print('consensus (AlignInfo.SummaryInfo) %s' % consensus2) 
+
     return
 
 def loadAlignmentFromFile( fileName, format ):
