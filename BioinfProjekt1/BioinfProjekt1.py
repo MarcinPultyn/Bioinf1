@@ -42,37 +42,62 @@ def loadAlignmentsListFromFile(fileName, format):
     alignments = list(AlignIO.parse(fileName, format))
     return alignments
 
-def alignSequences(filename):
+def performAlignSequences(filename):
     clustalw_exe = r"clustalw2.exe"
-    cline = ClustalwCommandline(clustalw_exe, infile=filename, outfile='test.aln', gapopen = 0, gapext = 0)
-
+    cline = ClustalwCommandline(clustalw_exe, infile=filename, outfile='alignOutput.aln', gapopen = 0, gapext = 0)
     return_code = subprocess.call(str(cline), shell=(sys.platform != "win32"))
     assert return_code == 0, "Calling ClustalW failed"
 
-    resultAlignment = loadAlignmentFromFile('test.aln', 'clustal')
+    resultAlignment = loadAlignmentFromFile('alignOutput.aln', 'clustal')
     return resultAlignment
 
-def combineAlignments(alignments):
+def alignProfiles(profile1, profile2):
+    clustalw_exe = r"clustalw2.exe"
+    cline = ClustalwCommandline(clustalw_exe, profile1=profile1, profile2=profile2, outfile='alignOutput.aln', gapopen = 0, gapext = 0, profile = True)
+    return_code = subprocess.call(str(cline), shell=(sys.platform != "win32"))
+    assert return_code == 0, "Calling ClustalW failed"
+
+    resultAlignment = loadAlignmentFromFile('alignOutput.aln', 'clustal')
+    return resultAlignment
+
+
+def alignSequences(alignments):
     AlignIO.write(alignments, "temp.fasta", "fasta")
 
-    result = alignSequences("temp.fasta")    
+    result = performAlignSequences("temp.fasta")    
     return result
 
-option = input("Single alignment (s) or multiple (m)? ")
-if(option == "s" or option == "S"):
-    fileName = input("Enter filename ")
-    format = input("Enter format ")
+print("Wybierz opcję:")
+print("1. wyświetlenie informacji o wielodopasowaniu")
+print("2. złożenie dwóch wielodopasowań")
+print("3. progressive multialigning")
+
+option = input()
+if(option == "1"):
+    fileName = input("Podaj nazwę pliku z wielodopasowaniem ")
+    format = input("Podaj format ")
     alignment = loadAlignmentFromFile(fileName, format)
     printAlignmentInfo(alignment, alph)
-elif(option == "m" or option == "M"):
-    fileName = input("Enter filename ")
-    format = input("Enter format ")
-    alignments = loadAlignmentsListFromFile(fileName, format)
-    result = combineAlignments(alignments)
+elif(option == "2"):
+    profile1 = input("Podaj nazwę pliku z 1. wielodopasowaniem ")
+    profile2 = input("Podaj nazwę pliku z 2. wielodopasowaniem ")
+    result = alignProfiles(profile1, profile2)
     printAlignmentInfo(result, alph)
-elif(option == "d" or option == "D"):
+elif(option == "3"):
+    fileName = input("Podaj nazwę pliku z sekwencjami ")
+    format = input("Podaj format ")
+    alignments = loadAlignmentsListFromFile(fileName, format)
+    result = alignSequences(alignments)
+    printAlignmentInfo(result, alph)
+elif(option == "1d"):
+    alignment = loadAlignmentFromFile("prof1.fasta", "fasta")
+    printAlignmentInfo(alignment, alph)
+elif(option == "2d"):
+    result = alignProfiles("prof1.fasta", "prof2.fasta")
+    printAlignmentInfo(result, alph)
+elif(option == "3d"):
     alignments = loadAlignmentsListFromFile("my_example.phy", "phylip")
-    result = combineAlignments(alignments)
+    result = alignSequences(alignments)
     printAlignmentInfo(result, alph)
 else:
     print("Unrecognized option")
